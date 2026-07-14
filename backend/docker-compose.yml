@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: zapisi_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: zapisi
+    ports:
+      - "7235:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: zapisi_app
+    restart: always
+    env_file:
+      - .env.docker
+    depends_on:
+      - db
+    ports:
+      - "7100:7100"
+
+volumes:
+  pgdata:

@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "zapisi-backend"
+version = "0.1.0"
+description = "Zapisi.com (Cal.com clone) Backend Microservice"
+authors = ["Author <author@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.110.0"
+uvicorn = {extras = ["standard"], version = "^0.28.0"}
+sqlalchemy = {extras = ["mypy"], version = "^2.0.28"}
+asyncpg = "^0.29.0"
+aiosqlite = "^0.20.0"
+alembic = "^1.13.1"
+pydantic = "^2.6.4"
+pydantic-settings = "^2.2.1"
+python-multipart = "^0.0.9"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.2.0"
+isort = "^5.13.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
