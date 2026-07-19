@@ -172,9 +172,9 @@ export default function Booking() {
                     {dayjs(bookingResult.date).format('DD MMMM YYYY')} ({dayjs(bookingResult.date).format('dddd')})
                   </Text>
                 </Group>
-                <Group justify="space-between">
+                <Group justify="space-between" align="center">
                   <Text size="sm" c="dimmed">Время приёма:</Text>
-                  <Text size="sm" style={{ fontWeight: 600 }}>
+                  <Text size="xl" c="indigo" style={{ fontWeight: 800 }}>
                     {bookingResult.time.substring(0, 5)}
                   </Text>
                 </Group>
