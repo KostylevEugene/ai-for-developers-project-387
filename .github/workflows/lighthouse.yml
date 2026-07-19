@@ -1,0 +1,214 @@
+name: lighthouse
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+jobs:
+  audit-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run frontend:build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: ./lighthouserc.json
+          urls: |
+            http://localhost:4173
+          runs: 3
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report-pr
+          path: .lighthouseci/
+          retention-days: 30
+
+  audit-push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run frontend:build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: ./lighthouserc.json
+          urls: |
+            http://localhost:4173
+          runs: 3
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report-push
+          path: .lighthouseci/
+          retention-days: 30
+
+  audit-issue:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Extract URL from issue body
+        id: extract-url
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+            const match = body.match(/https?:\/\/[^\s)]+/i);
+            core.setOutput('url', match ? match[0] : '');
+            core.setOutput('issue_number', context.payload.issue.number);
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.extract-url.outputs.url == ''
+        run: npm ci
+
+      - name: Build frontend
+        if: steps.extract-url.outputs.url == ''
+        run: npm run frontend:build
+
+      - name: Run Lighthouse CI (external URL from issue)
+        if: steps.extract-url.outputs.url != ''
+        id: lhci-external
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: ./lighthouserc.json
+          urls: |
+            ${{ steps.extract-url.outputs.url }}
+          runs: 3
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Run Lighthouse CI (fallback to local preview)
+        if: steps.extract-url.outputs.url == ''
+        id: lhci-local
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: ./lighthouserc.json
+          urls: |
+            http://localhost:4173
+          runs: 3
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report-issue-${{ steps.extract-url.outputs.issue_number }}
+          path: .lighthouseci/
+          retention-days: 30
+
+      - name: Post report comment to issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const issueNumber = context.payload.issue.number;
+            const auditedUrl = `${{ steps.extract-url.outputs.url }}` || 'http://localhost:4173 (local preview, built in CI)';
+
+            // Читаем результаты из .lighthouseci/ — берём самый свежий lhr-*.json
+            const lhDir = path.join(process.env.GITHUB_WORKSPACE, '.lighthouseci');
+            let performance = 'N/A', accessibility = 'N/A', seo = 'N/A', bestPractices = 'N/A', pwa = 'N/A';
+
+            try {
+              const files = fs.existsSync(lhDir)
+                ? fs.readdirSync(lhDir)
+                    .filter(f => /^lhr-.*\.json$/i.test(f))
+                    .map(f => ({ f, mtime: fs.statSync(path.join(lhDir, f)).mtimeMs }))
+                    .sort((a, b) => b.mtime - a.mtime)
+                : [];
+              if (files.length) {
+                const lhr = JSON.parse(fs.readFileSync(path.join(lhDir, files[0].f), 'utf8'));
+                const scores = lhr.categories || {};
+                const fmt = (c) => c && typeof c.score === 'number' ? (c.score * 100).toFixed(0) : 'N/A';
+                performance = fmt(scores.performance);
+                accessibility = fmt(scores.accessibility);
+                seo = fmt(scores.seo);
+                bestPractices = fmt(scores['best-practices']);
+                pwa = fmt(scores.pwa);
+              }
+            } catch (e) {
+              core.warning('Не удалось прочитать lhr json: ' + e.message);
+            }
+
+            // Ссылка на temporary-public-storage берётся из run-артефакта; fallback — артефакт workflow
+            const tmpStorageLink = '(см. артефакт workflow ниже)';
+
+            const body = [
+              `📊 **Lighthouse CI report**`,
+              ``,
+              `**URL аудита:** ${auditedUrl}`,
+              ``,
+              `| Категория | Score |`,
+              `|-----------|-------|`,
+              `| Performance | ${performance} |`,
+              `| Accessibility | ${accessibility} |`,
+              `| SEO | ${seo} |`,
+              `| Best Practices | ${bestPractices} |`,
+              `| PWA | ${pwa} |`,
+              ``,
+              `**Полный отчёт:** ${tmpStorageLink}`,
+              `**Артефакт workflow:** ${context.runId ? 'https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId : 'N/A'}`,
+              ``,
+              `Пороги: \`accessibility < 0.9\` = error; остальные категории warn при <0.9. См. \`lighthouserc.json\`.`
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body
+            });

@@ -11,14 +11,21 @@
     "api:mock": "npx @stoplight/prism-cli mock tsp-output/schema/openapi.yaml -p 4000",
     "frontend:dev": "npm run dev --workspace=frontend",
     "frontend:build": "npm run build --workspace=frontend",
-    "frontend:lint": "npm run lint --workspace=frontend"
+    "frontend:lint": "npm run lint --workspace=frontend",
+    "frontend:preview": "npm run preview --workspace=frontend -- --port 4173",
+    "lhc:autorun": "lhci autorun --config=./lighthouserc.json",
+    "lhc:collect": "lhci collect --config=./lighthouserc.json",
+    "lhc:assert": "lhci assert --config=./lighthouserc.json"
   },
   "dependencies": {
     "@typespec/compiler": "^1.13.0",
     "@typespec/http": "^1.13.0",
-    "@typespec/rest": "^0.83.0",
     "@typespec/openapi": "^1.13.0",
-    "@typespec/openapi3": "^1.13.0"
+    "@typespec/openapi3": "^1.13.0",
+    "@typespec/rest": "^0.83.0"
   },
-  "packageManager": "npm@11.17.0+sha512.3eeaf18997b11070d313849268b23766b9db0068997dec9471073170fe43fa17f2b4d0337bf0f52330ee2274e7f5754b21b01052742e48f5c9c74d8b1e32ef43"
+  "packageManager": "npm@11.17.0+sha512.3eeaf18997b11070d313849268b23766b9db0068997dec9471073170fe43fa17f2b4d0337bf0f52330ee2274e7f5754b21b01052742e48f5c9c74d8b1e32ef43",
+  "devDependencies": {
+    "@lhci/cli": "^0.15.1"
+  }
 }
