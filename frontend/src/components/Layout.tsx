@@ -20,6 +20,7 @@ export function Layout() {
         main: {
           background: '#f8f9fa',
           minHeight: '100vh',
+          paddingTop: 60,
         },
       }}
     >
