@@ -155,8 +155,12 @@ export default function AdminDashboard() {
     const [endH, endM] = values.endTimeStr.split(':').map(Number);
 
     const today = dayjs();
-    const startTimeIso = today.hour(startH).minute(startM).second(0).millisecond(0).toISOString();
-    const endTimeIso = today.hour(endH).minute(endM).second(0).millisecond(0).toISOString();
+    // Отправляем наивный ISO (без смещения таймзоны): часы работы — это
+    // "время суток", а не точка во времени. Ранее .toISOString() переводил
+    // локальное время в UTC, из-за чего на бэке .time() возвращал сдвинутое
+    // значение и сетка слотов строилась неверно (см. issue «Время брони»).
+    const startTimeIso = today.hour(startH).minute(startM).second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss');
+    const endTimeIso = today.hour(endH).minute(endM).second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss');
 
     const body = {
       name: values.name,
