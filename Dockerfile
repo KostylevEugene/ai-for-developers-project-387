@@ -76,5 +76,5 @@ RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 # Открываем порт приложения (управляется переменной окружения PORT, по умолчанию 8080)
 EXPOSE 8080
 
-# Запуск: сначала подменяем PORT в шаблоне Nginx, затем запускаем supervisor
+# Запуск:  сначала подменяем PORT в шаблоне Nginx, затем запускаем supervisor
 CMD ["sh", "-c", "envsubst '${PORT}' < /etc/nginx/sites-available/default.template > /etc/nginx/sites-available/default && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
